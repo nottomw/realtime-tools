@@ -72,10 +72,10 @@ fn main() {
 
     if pid_to_trace == current_pid as i32 {
         self_test();
+    } else {
+        println!("Sleeping...");
+        thread::sleep(Duration::from_secs(20));
     }
-
-    println!("Sleeping...");
-    thread::sleep(Duration::from_secs(20));
 
     println!("Done...");
 }
