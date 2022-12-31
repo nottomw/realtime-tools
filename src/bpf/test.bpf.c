@@ -5,13 +5,68 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-const volatile int my_pid = 0;
+#define PID_TRACE_INVALID (-1)
+
+const volatile int pid_to_trace = PID_TRACE_INVALID;
 
 SEC("tp_btf/sched_wakeup")
-int handle_tp(u64 *ctx)
+int handle__sched_wakeup(u64 *ctx)
 {
-    struct task_struct *t = (void *)ctx[0];
-    bpf_printk("Sched wakeup, PID %d.\n", t->pid);
+    struct task_struct *task = (struct task_struct *)ctx[0];
+
+    if (task->tgid != pid_to_trace)
+    {
+        return 0; // not interested
+    }
+
+    bpf_printk("Sched wakeup, PID %d, RT prio: %d, policy: %d.\n",
+        task->tgid,
+        task->rt_priority,
+        task->policy);
+
+    return 0;
+}
+
+SEC("tp_btf/sched_wakeup_new")
+int handle__sched_wakeup_new(u64 *ctx)
+{
+    struct task_struct *task = (struct task_struct *)ctx[0];
+
+    if (task->tgid != pid_to_trace)
+    {
+        return 0; // not interested
+    }
+
+    bpf_printk("Sched wakeup new, PID %d, RT prio: %d, policy: %d.\n",
+        task->tgid,
+        task->rt_priority,
+        task->policy);
+
+    return 0;
+}
+
+
+SEC("tp_btf/sched_switch")
+int handle__sched_switch(u64 *ctx)
+{
+    struct task_struct *task_prev = (struct task_struct *)ctx[1];
+    struct task_struct *task_next = (struct task_struct *)ctx[2];
+
+    if ((task_prev->tgid != pid_to_trace) &&
+        (task_next->tgid != pid_to_trace))
+    {
+        return 0; // not interested
+    }
+
+    bpf_printk("Sched switch, PREV { PID %d, prio: %d, policy: %d }\n",
+        task_prev->tgid,
+        task_prev->rt_priority,
+        task_prev->policy);
+
+    bpf_printk("Sched switch, NEXT { PID %d, prio: %d, policy: %d }\n",
+        task_next->tgid,
+        task_next->rt_priority,
+        task_next->policy);
 
     return 0;
 }

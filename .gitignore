@@ -1,4 +1,5 @@
 /target
 .vscode/
 src/bpf/vmlinux.h
+NOTES.md
 
