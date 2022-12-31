@@ -1,1 +1,4 @@
 /target
+.vscode/
+src/bpf/vmlinux.h
+

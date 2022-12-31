@@ -3,6 +3,10 @@ name = "realtime-tools"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+libbpf-rs = "0.19.1"
+anyhow = "1.0.68"
+libc = "0.2.139"
+
+[build-dependencies]
+libbpf-cargo = "0.13.1"
