@@ -148,5 +148,13 @@ fn main() {
         thread::sleep(Duration::from_secs(20));
     }
 
+    // Some ideas:
+    // TODO: grab thread name
+    // TODO: context switch timeline
+    // TODO: context switch stats
+    // TODO: histogram
+    // TODO: cpu time
+    // TODO: prio inversion detect
+
     println!("Done...");
 }
