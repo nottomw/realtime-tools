@@ -69,7 +69,7 @@ fn handle_rb_data(data: &[u8]) -> i32 {
     }
 
     println!(
-        "TASK EVENT {}, \tPID prev: {}, \tPID next: {}, \tprio prev: {}, \tprio next: {}",
+        "\t--> RT {}, \tPID prev: {:10}, \tPID next: {:10}, \tprio prev: {}, \tprio next: {}",
         event_type_str, //
         rt_event.pid_prev,
         rt_event.pid_next,
