@@ -8,6 +8,7 @@ libbpf-rs = "0.19.1"
 anyhow = "1.0.68"
 libc = "0.2.139"
 thread-priority = "0.10.0"
+plain = "0.2.3"
 
 [build-dependencies]
 libbpf-cargo = "0.13.1"
