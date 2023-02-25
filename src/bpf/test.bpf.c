@@ -64,7 +64,7 @@ int sched_wakeup_common(u64 *ctx)
     }
 
     ev->event_type = SCHED_WAKE;
-    ev->time = 999;
+    ev->time = bpf_ktime_get_ns();
     ev->pid_prev = 0;
     ev->pid_next = task->tgid;
     ev->priority_prev = 0;
@@ -123,7 +123,7 @@ int handle__sched_switch(u64 *ctx)
         task_next->policy);
 
     ev->event_type = SCHED_SWITCH;
-    ev->time = 999;
+    ev->time = bpf_ktime_get_ns();
     ev->pid_prev = task_prev->tgid;
     ev->pid_next = task_next->tgid;
     ev->priority_prev = task_prev->rt_priority;
