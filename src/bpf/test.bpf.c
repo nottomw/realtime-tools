@@ -9,8 +9,35 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 const volatile int pid_to_trace = PID_TRACE_INVALID;
 
-SEC("tp_btf/sched_wakeup")
-int handle__sched_wakeup(u64 *ctx)
+#define RT_POLICY_RR 2
+
+enum rt_event_type
+{
+    SCHED_WAKE,
+    SCHED_SWITCH,
+};
+
+struct rt_event
+{
+    enum rt_event_type event_type;
+
+    uint64_t time;
+    uint32_t pid_prev;
+    uint32_t pid_next;
+    uint32_t priority_prev;
+    uint32_t priority_next;
+};
+
+// dummy instances to get types in skeleton
+enum rt_event_type _rt_event_type;
+struct rt_event _rt_event = {0};
+
+struct {
+    __uint(type, BPF_MAP_TYPE_RINGBUF);
+    __uint(max_entries, 256 * 1024);
+} rb SEC(".maps");
+
+int sched_wakeup_common(u64 *ctx)
 {
     struct task_struct *task = (struct task_struct *)ctx[0];
 
@@ -19,32 +46,46 @@ int handle__sched_wakeup(u64 *ctx)
         return 0; // not interested
     }
 
+    if (task->policy != RT_POLICY_RR)
+    {
+        return 0; // not interested in non-rt threads
+    }
+    
     bpf_printk("Sched wakeup, PID %d, RT prio: %d, policy: %d.\n",
         task->tgid,
         task->rt_priority,
         task->policy);
 
+    struct rt_event *ev = bpf_ringbuf_reserve(&rb, sizeof(struct rt_event), 0);
+    if (ev == NULL)
+    {
+        bpf_printk("error: could not reserve place in bpf ringbuf\n");
+        return 0;
+    }
+
+    ev->event_type = SCHED_WAKE;
+    ev->time = 999;
+    ev->pid_prev = 0;
+    ev->pid_next = task->tgid;
+    ev->priority_prev = 0;
+    ev->priority_prev = task->rt_priority;
+
+    bpf_ringbuf_submit(ev, 0);
+
     return 0;
+}
+
+SEC("tp_btf/sched_wakeup")
+int handle__sched_wakeup(u64 *ctx)
+{
+    return sched_wakeup_common(ctx);
 }
 
 SEC("tp_btf/sched_wakeup_new")
 int handle__sched_wakeup_new(u64 *ctx)
 {
-    struct task_struct *task = (struct task_struct *)ctx[0];
-
-    if (task->tgid != pid_to_trace)
-    {
-        return 0; // not interested
-    }
-
-    bpf_printk("Sched wakeup new, PID %d, RT prio: %d, policy: %d.\n",
-        task->tgid,
-        task->rt_priority,
-        task->policy);
-
-    return 0;
+    return sched_wakeup_common(ctx);
 }
-
 
 SEC("tp_btf/sched_switch")
 int handle__sched_switch(u64 *ctx)
@@ -58,6 +99,19 @@ int handle__sched_switch(u64 *ctx)
         return 0; // not interested
     }
 
+    if ((task_prev->policy != RT_POLICY_RR) && 
+        (task_next->policy != RT_POLICY_RR))
+    {
+        return 0; // not interested in non-rt threads
+    }
+
+    struct rt_event *ev = bpf_ringbuf_reserve(&rb, sizeof(struct rt_event), 0);
+    if (ev == NULL)
+    {
+        bpf_printk("error: could not reserve place in bpf ringbuf\n");
+        return 0;
+    }
+
     bpf_printk("Sched switch, PREV { PID %d, prio: %d, policy: %d }\n",
         task_prev->tgid,
         task_prev->rt_priority,
@@ -67,6 +121,15 @@ int handle__sched_switch(u64 *ctx)
         task_next->tgid,
         task_next->rt_priority,
         task_next->policy);
+
+    ev->event_type = SCHED_SWITCH;
+    ev->time = 999;
+    ev->pid_prev = task_prev->tgid;
+    ev->pid_next = task_next->tgid;
+    ev->priority_prev = task_prev->rt_priority;
+    ev->priority_next = task_next->rt_priority;
+
+    bpf_ringbuf_submit(ev, 0);
 
     return 0;
 }
